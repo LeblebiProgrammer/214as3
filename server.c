@@ -236,7 +236,7 @@ void func(int sockfd) {
 					update += 2;
 					while (*update != '\n') buffer[i++] = *update++;
 					buffer[i] = '\0';
-					char *_temp = _read(buffer);
+					char *_temp = (char*)_read(buffer);
 					char *temp = concat(buffer, _temp, ':');
 					free(_temp);
 					message = realloc(message, strlen(message) + strlen(temp) + 1);
@@ -247,7 +247,7 @@ void func(int sockfd) {
 					while (*update != '\n')
 						buffer[i++] = *update++;
 					buffer[i] = '\0';
-					char *_temp = _read(buffer);
+					char *_temp = (char*)_read(buffer);
 					char *temp = concat(buffer, _temp, ':');
 					free(_temp);
 					message = realloc(message, strlen(message) + strlen(temp) + 1);

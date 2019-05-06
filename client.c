@@ -283,7 +283,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 			while (x < _f)//stores the file path under name
 				name[x++] = *f++;
 			name[x] = '\0';
-			unsigned char *g = strstr(manifest_s, name);
+			unsigned char *g = (unsigned char*)strstr(manifest_s, name);
 			
 			if (g == NULL) {//exists in client manifest but not server
 				char *msg = concat("D", name, ':');
@@ -327,7 +327,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 			while (x < _f)//stores the file path under name
 				name[x++] = *f++;
 			name[x] = '\0';
-			unsigned char *g = strstr(manifest_c, name);
+			unsigned char *g = (unsigned char*)strstr(manifest_c, name);
 			
 			if (g == NULL) {//for when file in server manifest but not client
 				char *msg = concat("A", name, ':');
@@ -436,8 +436,8 @@ void currentVersion(char* proj) {
 }
 
 /*void updateManifest(char* proj) {
-	/* 1. GET CLIENT MANIFEST for PROJ */
-	/*char* path_p = concat(proj, ".manifest", '/');
+	1. GET CLIENT MANIFEST for PROJ 
+	char* path_p = concat(proj, ".manifest", '/');
 	char* manifest_o = _read(path_p);
 	char* manifest_n;
 }*/

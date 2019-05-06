@@ -37,4 +37,8 @@ void createDir(char *str);
 
 char *folderFinder(char *path);
 
+char* _read(char* path);
+
+char* getLine(char* str, char eol, int n);
+
 #endif

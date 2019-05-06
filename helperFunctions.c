@@ -1,13 +1,13 @@
 #include "helperFunctions.h"
 
-int hash(char *str) {
+/*int hash(char *str) {
     unsigned long hash_n = 5381;
     int c;
     while (c = *str++) 
-        hash_n = ((hash_n << 5) + hash_n) + c; /* hash * 33 + c */
+        hash_n = ((hash_n << 5) + hash_n) + c; // hash * 33 + c 
 
     return hash_n % sizeof(unsigned int);//sizeof(unsigned long)
-}
+}*/
 
 char *concat(char *str1, char *str2, char delimeter){
     int length = strlen(str1) + 1 + strlen(str2) + 1;

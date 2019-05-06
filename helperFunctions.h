@@ -23,6 +23,9 @@
 #define CHUNK 16384
 
 #define MAX 20
+char* _read(char* path);
+
+char *getLine(char* str, char eol, int n);
 
 char *concat(char *str1, char *str2, char delimeter);
 

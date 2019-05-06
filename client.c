@@ -276,7 +276,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 			continue;
 		else {
 			unsigned char* f = strchr(temp, '\t');
-			int _f = f - 0;
+			int _f = (int)(f - 0);
 			char name[_f];
 			int x = 0;
 			while (x < _f)//stores the file path under name
@@ -316,7 +316,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 			continue;
 		else {
 			unsigned char* f = strchr(temp, '\t');
-			int _f = f - 0;
+			int _f = (int)(f - 0);
 			char name[_f];
 			int x = 0;
 			while (x < _f)//stores the file path under name
@@ -336,7 +336,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 	printf(".update built..\n");
 }
 
-void clientUpdate(char *updateName) {
+void clientUpdate(char *updateName) {//TODO add stdout functionality
   	char *serverInfo = fileReader("./.configure");
   	serverStruct *server = ServerStringReader(serverInfo);
   	
@@ -427,6 +427,121 @@ void currentVersion(char* proj) {
   	}
 }
 
+void updateManifest(char* proj) {
+//ADD FUNCTIONALITY
+}
+
+void _upgrade(char* proj, char* upgrade, char* response) {
+	char* ptr = upgrade;
+	char* path = concat(proj, ".manifest", '/');
+	
+	char* ptrr = response;
+	while (*ptr) {
+		ptr++;
+		switch(*ptr) {
+			case 'U': continue;
+				break;
+			case 'M':
+			case 'A': {
+					char buf[1024];
+					int i = 0;
+					while (*ptrr != ':') buf[i++] = *ptr++;
+					buf[i] = '\0';
+					i = 0;
+					int fd = open(buf, O_CREAT | O_RDWR | O_TRUNC);
+					if (fd < 0) {
+						printf("ERROR\n");
+						exit(0);
+					}
+					while (*ptrr != '\n') {
+						buf[i++] = *ptrr++;
+						if (i == 1023) {
+							buf[i] = '\0';
+							if (write(fd, buf, i) != i) {
+								printf("write error\n");
+								exit(0);
+							}
+							i = 0;
+							buf[i] = '\0';
+						}
+					}
+					if (write(fd, buf, i) != i) {
+						printf("write error\n");
+						exit(0);
+					}
+				}
+				break;
+			case 'D': {
+					while (*ptr != ':') ptr++;
+					ptr++
+					char file_buffer[256];
+					int z = 0;
+					while (*ptr != '\n') file_buffer[z++] = *ptr++;
+					clientRemove(proj, file_buffer);
+				}
+				break;
+			default: continue;
+		}
+	}
+	updateManifest(proj);
+}
+
+void upgrade(char* proj) {
+  	char *serverInfo = fileReader("./.configure");
+  	serverStruct *server = ServerStringReader(serverInfo);
+  	char *_msg = concat("upgrade", proj, ':');
+  	char *path = concat(proj, ".upgrade", '/');
+  	char* temp = _read(path);
+  	char* msg = concat(_msg, temp, ':');
+  	free(path);
+  	free(_msg);
+
+   	if (strlen(msg)>0) {
+    	char *total = msgPreparer(msg);
+
+    	if (total != NULL) {
+      		char *response = serverConnect(server, total);
+      		
+      		_upgrade(proj, temp, response);
+      		
+      		free(total);
+      		free(temp);
+      		free(response);
+    	}
+    	else {
+      		printf("Error while preparing message");
+    	}
+    	free(msg);
+  	}
+}
+
+void history(char* proj) {
+  	char *serverInfo = fileReader("./.configure");
+  	serverStruct *server = ServerStringReader(serverInfo);
+  	char *msg = concat("history", proj, ':');
+   	if (strlen(msg)>0) {
+    	char *total = msgPreparer(msg);
+
+    	if (total != NULL) {
+      		char *response = serverConnect(server, total);
+      		
+      		printf(response);
+      		
+      		free(total);
+      		free(temp);
+      		free(response);
+    	}
+    	else {
+      		printf("Error while preparing message");
+    	}
+    	free(msg);
+  	}
+  	free(msg);
+}
+
+void commit(char* proj) {
+}
+
 int main(int argc, char **argv) {
     if (argc > 1){
         if (strcmp(argv[1], "configure") == 0) {
@@ -472,9 +587,21 @@ int main(int argc, char **argv) {
           	char *updateName = argv[2];
           	clientUpdate(updateName);
         }
-        else if (strcmp(argv[1], "currentversion") == 0) {//WIP
+        else if (strcmp(argv[1], "currentversion") == 0) {
           	char *proj = argv[2];
           	currentVersion(proj);
+        }
+        else if (strcmp(argv[1], "upgrade") == 0) {//WIP
+        	char* proj = argv[2];
+        	upgrade(proj);
+        }
+        else if (strcmp(argv[1], "history") == 0) {
+        	char* proj = argv[2];
+        	history(proj);
+        }
+        else if (strcmp(argv[1], "commit") == 0) {
+        	char* proj = argv[2];
+        	commit(proj);
         }
 	}
 }

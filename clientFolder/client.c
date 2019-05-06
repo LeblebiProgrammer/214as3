@@ -16,25 +16,25 @@ void func(int sockfd, char *message)
 
 }
 
-
-char *fileReader(char *fpath){
-    int fd = open(fpath, O_RDONLY);
-    char *fileStr = NULL;
-    if(fd != -1){
-        off_t currentPos = lseek(fd, (size_t)0, SEEK_CUR);
-        int size = lseek(fd, 0, SEEK_END);
-        lseek(fd, currentPos, SEEK_SET);
-
-        fileStr = (char*)malloc(sizeof(char)*size);
-        read(fd, fileStr, size);
-    }
-    else{
-        printf("Configure file could not be opened\n");
-        exit(0);
-    }
-    close(fd);
-    return fileStr;
-}
+//
+// char *fileReader(char *fpath){
+//     int fd = open(fpath, O_RDONLY);
+//     char *fileStr = NULL;
+//     if(fd != -1){
+//         off_t currentPos = lseek(fd, (size_t)0, SEEK_CUR);
+//         int size = lseek(fd, 0, SEEK_END);
+//         lseek(fd, currentPos, SEEK_SET);
+//
+//         fileStr = (char*)malloc(sizeof(char)*size);
+//         read(fd, fileStr, size);
+//     }
+//     else{
+//         printf("Configure file could not be opened\n");
+//         exit(0);
+//     }
+//     close(fd);
+//     return fileStr;
+// }
 
 
 void configure(char *_ip, char *_port){
@@ -141,10 +141,52 @@ void checkout(char *fileName){
       if(total != NULL){
         char *response = serverConnect(server, total);
         free(total);
-        free(response);
-      }
-      else{
-        printf("Error while preparing message");
+
+        if(response != NULL){
+
+          char *charEnd = subString(response, '>', '1');
+          char *front = subString(response, '>', '0');
+          if(strcmp(front, "success") == 0){
+            int pass = 0;
+            while(strchr(charEnd, '>') != NULL){
+              char *path = subIndexer(charEnd, "<", '>');
+              char *c1 = subString(charEnd, '>', '1');
+              char *strs = folderFinder(path);
+
+              char *content = subString(c1, '<', '1');
+              if(strchr(content, '>') != NULL){
+                char *fileContent = subString(content, '>', '0');
+                char *_tmpName_ = subString(c1, '>', '1');
+                free(content);
+                content = _tmpName_;
+                fileWriter(strs, fileContent, 0, '1');
+                free(fileContent);
+              }
+              else{
+                fileWriter(strs, content, 0, '1');
+                free(content);
+              }
+              free(charEnd);
+              free(path);
+              free(c1);
+              free(strs);
+              charEnd = content;
+              pass++;
+            }
+            if(pass > 1){
+              free(charEnd);
+            }
+          }else{
+
+          }
+          if(front != NULL){
+            free(front);
+          }
+          free(response);
+        }
+        else{
+          printf("Error while preparing message");
+        }
       }
     }
 
@@ -224,11 +266,6 @@ void clientDestroy(char *fileName){
       printf("Error while preparing message");
     }
   }
-  //printf("%ld len out of destrtoy\n", strlen(msg));
-  //printf("message: %s\n",msg );
-
-  //printf("%s \t %s \n", server->ip, server->port);
-
   free(serverInfo);
   free(server->ip);
   free(server->port);
@@ -245,6 +282,175 @@ void clientAdd(char *projectName, char *fname){
   char *manipath = concat(projectName, ".manifest", '/');
   free(path);
   free(manipath);
+}
+
+void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest_c) {
+	int i = 0;
+	char *temp;
+
+	int fd = open(update_path, O_RDWR | O_CREAT | O_TRUNC, 00644);
+	if (fd < 0) {
+		printf("file error\n");
+		return;
+	}
+
+	while (temp = getLine(manifest_c, '\n', i)) {
+		if (strstr(manifest_s, temp))
+			continue;
+		else {
+			unsigned char* f = strchr(temp, '\t');
+			int _f = f - 0;
+			char name[_f];
+			int x = 0;
+			while (x < _f)//stores the file path under name
+				name[x++] = *f++;
+			name[x] = '\0';
+			unsigned char *g = strstr(manifest_s, name);
+
+			if (g == NULL) {//exists in client manifest but not server
+				char *msg = concat("D", name, ':');
+				char *_msg = concat(msg, "\n", '\0');
+				write(fd, _msg, strlen(_msg));
+				free(msg);
+				free(_msg);
+			}
+			else {
+				while(*g++ == *f++)
+
+				if (g > f) {//server version ahead of client version
+					char *msg = concat("M", name, ':');
+					char *_msg = concat(msg, "\n", '\0');
+					write(fd, _msg, strlen(_msg));
+					free(msg);
+					free(_msg);
+				}
+				else {//client version ahead of server
+					char *msg = concat("U", name, ':');
+					char *_msg = concat(msg, "\n", '\0');
+					write(fd, _msg, strlen(_msg));
+					free(msg);
+					free(_msg);
+				}
+			}
+		}
+	}
+	while (temp = getLine(manifest_s, '\n', i)) {
+		if (strstr(manifest_c, temp))
+			continue;
+		else {
+			unsigned char* f = strchr(temp, '\t');
+			int _f = f - 0;
+			char name[_f];
+			int x = 0;
+			while (x < _f)//stores the file path under name
+				name[x++] = *f++;
+			name[x] = '\0';
+			unsigned char *g = strstr(manifest_c, name);
+
+			if (g == NULL) {//for when file in server manifest but not client
+				char *msg = concat("A", name, ':');
+				char *_msg = concat(msg, "\n", '\0');
+				write(fd, _msg, strlen(_msg));
+				free(msg);
+				free(_msg);
+			}
+		}
+	}
+	printf(".update built..\n");
+}
+
+
+void clientUpdate(char *updateName) {
+  char *serverInfo = fileReader("./.configure");
+  serverStruct *server = ServerStringReader(serverInfo);
+
+  char *tmp = concat("update", updateName, ':');
+  char *msg = msgPreparer(tmp);
+
+  char *updatePath = concat(updateName, ".update", '/');
+  char *_tmp = concat(updateName, ".manifest", '/');
+
+  char* manifest_s = serverConnect(server, msg);//manifest server
+  char* manifest_c = _read(tmp);
+  buildUpdate(updateName, updatePath, manifest_s, manifest_c);
+
+  free(msg);
+  free(tmp);
+  free(_tmp);
+  free(updatePath);
+  free(manifest_s);
+}
+
+void clientRemove(char* projName, char* fileName) {//NOTE: DOES NOT REMOVE FILE FROM MEMORY ONLY FROM .manifest
+	char *_path = concat("/", projName, '\0');
+	char *path = concat(_path, ".manifest", '/');
+	char *tmp = _read(path);
+
+	free(_path);
+	if (tmp == NULL) {
+		printf("Error: _read() error\n");
+		free(path);
+		return;
+	}
+	else {
+		char new_manifest[sizeof(tmp)];
+		int i = 0, j = 0;
+		char *ptr = strstr(tmp, path);
+		int index = tmp - ptr;
+		while (i < index) {
+			new_manifest[i] = tmp[i];
+			if (tmp[i] == '\n')
+				j = i;
+			i++;
+		}
+		j++;
+
+		while (*ptr != '\n')
+			ptr++;
+		ptr++;
+
+		while (*ptr) {
+			new_manifest[j] = *ptr;
+			j++;
+			ptr++;
+		}
+		new_manifest[j] = '\0';
+
+		int fd = open(path, O_TRUNC | O_WRONLY);
+		free(path);
+		if (fd < 0) {
+			printf("Error: file error remove\n");
+			return;
+		}
+
+		if (write(fd, new_manifest, strlen(new_manifest)) != strlen(new_manifest)) {
+			printf("Error: file write error in remove\n");
+			return;
+		}
+		close(fd);
+	}
+}
+
+
+void currentVersion(char* proj) {
+  	char *serverInfo = fileReader("./.configure");
+  	serverStruct *server = ServerStringReader(serverInfo);
+  	char *msg = concat("currentversion", proj, ':');
+  	if (strlen(msg)>0) {
+    	char *total = msgPreparer(msg);
+
+    	if (total != NULL) {
+      		char *response = serverConnect(server, total);
+          printf("%s\n", response);
+      		free(total);
+      		//printf(response);
+      		free(response);
+    	}
+    	else {
+      		printf("Error while preparing message");
+    	}
+    	free(msg);
+  	}
 }
 
 void clientRollback(char *projectName, char *versionNumber){
@@ -282,6 +488,10 @@ int main(int argc, char **argv)
           char *checkoutName = argv[2];
           checkout(checkoutName);
         }
+        else if (strcmp(argv[1], "update") == 0) {//WIP
+          	char *updateName = argv[2];
+          	clientUpdate(updateName);
+        }
         else if(strcmp(argv[1], "create") == 0){
           //printf("Hi");
           char *createName = argv[2];
@@ -299,6 +509,15 @@ int main(int argc, char **argv)
             clientAdd(projectName, fname);
           }
         }
+        else if (strcmp(argv[1], "remove") == 0) {
+          	char *projName = argv[2];
+          	char *fileName = argv[3];
+          	clientRemove(projName, fileName);
+        }
+        else if (strcmp(argv[1], "currentversion") == 0) {//WIP
+          	char *proj = argv[2];
+          	currentVersion(proj);
+        }
         else if (strcmp(argv[1], "rollback") == 0){
           char *projectName = argv[2];
           if(argv[3] != NULL){
@@ -306,6 +525,7 @@ int main(int argc, char **argv)
             clientRollback(projectName, versionNumber);
           }
         }
+
 
     }
 

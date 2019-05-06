@@ -3,6 +3,12 @@
 
 #define SA struct sockaddr
 
+typedef struct stringListObject{
+  char *value;
+  char *fileName;
+  struct stringListObject *next;
+}stringList;
+
 // Function designed for chat between client and server.
 
 int functionDeterminer(char *str){
@@ -35,7 +41,7 @@ int functionDeterminer(char *str){
 		  type = 6;
 	 }else if(strcmp(functionString, "destroy") == 0){
 		  type = 7;
-	 }else if(strcmp(functionString, "currentVersion") == 0){
+	 }else if(strcmp(functionString, "currentversion") == 0){
 		  type = 10;}
 	else if(strcmp(functionString, "rollback") == 0){
  		  type = 11;
@@ -47,8 +53,140 @@ int functionDeterminer(char *str){
    return type;
 }
 
-void commitFunction(char *str){
 
+int recursiveRead(char *path, stringList **head, char *parentPath)
+{
+   DIR *_dir = opendir(path);
+   int rvalue = -1;
+   if (_dir)
+   {
+      struct dirent *pdirent;
+      rvalue = 0;
+      while ((pdirent=readdir(_dir)) != NULL)
+      {
+          int rvalue2 = -1;
+
+          if (!strcmp(pdirent->d_name, ".") || !strcmp(pdirent->d_name, ".."))
+          {
+             continue;
+          }
+           struct stat statbuf;
+           char *fpath = concat(path, pdirent->d_name, '/');
+           char *ppath = concat(parentPath, pdirent->d_name, '/');
+           if (!stat(fpath, &statbuf)){
+              if (S_ISDIR(statbuf.st_mode)){
+
+                recursiveRead(fpath, head, ppath);
+
+              }
+              else{
+                 char *str = fileReader(fpath);
+                 if((*head) == NULL){
+                   (*head) = (stringList *)malloc(sizeof(stringList));
+                   (*head)->value = str;
+                   (*head)->fileName = ppath;
+                   (*head)->next = NULL;
+                 }
+                 else{
+                   stringList *nextNode = (stringList*)malloc(sizeof(stringList));
+                   nextNode->value = str;
+                   nextNode->fileName = ppath;
+                   nextNode->next = NULL;
+                   stringList *ptr = *head;
+                   do{
+                     if(ptr->next == NULL){
+                       ptr->next = nextNode;
+                       break;
+                     }
+                     else{
+                       ptr = ptr->next;
+                     }
+                   }while(ptr != NULL);
+                 }
+              }
+           }
+
+         //free(fpath);
+         rvalue = rvalue2;
+      }
+      closedir(_dir);
+   }
+
+   return rvalue;
+}
+
+
+char * checkoutFunction(char *fname){
+  char *message = NULL;
+  struct stat stats;
+  char *numpath = NULL;
+  if (stat( fname, &stats) != -1){
+    DIR *_dir = opendir(fname);
+    struct dirent *de;
+    int highest = 0;
+    char hasManifest = '0';
+    while((de = readdir(_dir)) != NULL) {
+      if(strcmp(de->d_name, ".manifest") == 0){
+        hasManifest = '1';
+      }
+      if(!isdigit(*de->d_name))
+          continue;
+      int version = atoi(de->d_name);
+      if(highest < version){
+        highest = version;
+        numpath = de->d_name;
+      }
+    }
+    if(highest == 0 && hasManifest == '1'){
+      char *st = "success><";
+      char *stpt2 = concat(st, fname, '\0');
+      char *path_ = concat(stpt2, ".manifest", '/');
+      message = concat(path_, "><version:0\n", '\0');
+      free(stpt2);
+      free(path_);
+    }
+    else{
+      char *path = concat(fname, numpath, '/');
+      stringList *head = NULL ;//= (stringList*)malloc(sizeof(stringList));
+      recursiveRead(path, &head, fname);
+      char *mms = NULL;
+      int count = 0;
+      while(head != NULL){
+        char *thead = concat("<", head->fileName, '\0');
+        char *temp = concat(thead, "><", '\0');
+        char *messagePrep1 = concat(temp, head->value, '\0');
+        char *messagePrep2;
+        if(head->next != NULL){
+          messagePrep2 = concat(messagePrep1, "", '>');
+        }
+        else{
+          messagePrep2 = concat(messagePrep1, "", '\0');
+        }
+
+        if(count > 0){
+          char *mprep = mms;
+          mms = concat(mprep, messagePrep2, '\0');
+          free(mprep);
+        }
+        else{
+          mms = concat("", messagePrep2, '\0');
+        }
+        count++;
+
+        free(thead);
+        free(temp);
+        free(messagePrep1);
+
+        // char *tmp = concat()
+        //printf("%s\n", head->value);
+        head = head->next;
+      }
+      message = concat("success", mms,'>');
+      free(mms);
+      free(path);
+    }
+  }
+  return message;
 }
 
 int createFunction(char *str){
@@ -172,6 +310,51 @@ int rollback(char *pname, char *version){
   return result;
 }
 
+char *currentVersionFunction(char *fname){
+  char *message = NULL;
+  struct stat stats;
+  char *numpath = NULL;
+  if (stat( fname, &stats) != -1){
+    DIR *_dir = opendir(fname);
+    struct dirent *de;
+    int highest = 0;
+    char hasManifest = '0';
+    while((de = readdir(_dir)) != NULL) {
+      if(strcmp(de->d_name, ".manifest") == 0){
+        hasManifest = '1';
+      }
+      if(!isdigit(*de->d_name))
+          continue;
+      int version = atoi(de->d_name);
+      if(highest < version){
+        highest = version;
+        numpath = de->d_name;
+      }
+    }
+    if(highest == 0 && hasManifest == '1'){
+      char *st = "success><";
+      char *stpt2 = concat(st, fname, '\0');
+      char *path_ = concat(stpt2, ".manifest", '/');
+      message = concat(path_, "><version:0\n", '\0');
+      free(stpt2);
+      free(path_);
+    }
+    else{
+      char *fpath1 = concat(fname, numpath, '/');
+      char *fpath2 = concat(fpath1, ".manifest>", '/');
+      char *str = fileReader(fpath2);
+
+
+      char *tempPath = concat("success><", fpath2, '\0');
+      message = concat(tempPath, str, '<');
+      free(fpath1);
+      free(fpath2);
+      free(str);
+      free(tempPath);
+    }
+  }
+  return message;
+}
 
 void func(int sockfd)
 {
@@ -182,11 +365,47 @@ void func(int sockfd)
   char *message = NULL;
 	printf("%d\n", functionType);
 	switch(functionType){
-		case 1:
-			commitFunction(readString);
-			break;
-		case 2:
-			break;
+		case 1:{
+      char *fname = subString(readString, ':', '1');
+      char *mssg = checkoutFunction(fname);
+      free(fname);
+      if(mssg != NULL){
+        message = msgPreparer(mssg);
+        free(mssg);
+      }
+	    break;
+    }
+		case 2:{
+      char *temp;
+			char *proj = subString(readString, ':', '1');
+			proj[strlen(proj)] = '\0';//might cause seg faults
+
+			char *path_manifest = concat(proj, ".manifest", '\0');
+
+  			int fd = open(path_manifest, O_RDONLY);
+
+  			char buffer[1024];
+  			char *_manifest;
+  			int buffer_len = 0;
+  			int _manifest_len = 0;
+			if (fd > 0) {
+				while ((buffer_len = read(fd, buffer, 1023)) > 0) {
+					_manifest_len += buffer_len;
+					_manifest = realloc(_manifest, (_manifest_len + 1) * sizeof(char));
+					strncat(_manifest, buffer, buffer_len);
+					_manifest[_manifest_len] = '\0';
+    			}
+
+        		temp = concat("success>", _manifest, '<');
+    			close(fd);
+  			}
+  			else {
+  				temp = "error><manifest could not be found.";
+  			}
+  			message = msgPreparer(temp);
+        break;
+    }
+
 		case 3:
 			break;
 		case 4:
@@ -233,26 +452,45 @@ void func(int sockfd)
 			break;
     }
 		case 10:
-			break;
+			{
+        char *fname = subString(readString, ':', '1');
+        char *temp = currentVersionFunction(fname);
+        message = msgPreparer(temp);
+        // char *temp;
+  			// char *proj = subString(readString, ':', '1');
+  			// proj[strlen(proj)] = '\0';//might cause seg faults
+        //
+  			// char *path_manifest = concat(proj, ".manifest", '\0');
+        //
+  			// int fd = open(path_manifest, O_RDONLY);
+        //
+  			// char buffer[1024];
+  			// char *_manifest;
+  			// int buffer_len = 0;
+  			// int _manifest_len = 0;
+  			// if (fd > 0) {
+  			// 	while ((buffer_len = read(fd, buffer, 1023)) > 0) {
+    		// 			_manifest_len += buffer_len;
+    		// 			_manifest = realloc(_manifest, (_manifest_len + 1) * sizeof(char));
+    		// 			strncat(_manifest, buffer, buffer_len);
+    		// 			_manifest[_manifest_len] = '\0';
+    		// 	}
+    		// 	close(fd);
+  			// }
+  			// message = (char*)malloc(_manifest_len + 1);
+  			// memcpy(message, _manifest, _manifest_len);
+  			// free(_manifest);
+
+        break;
+    }
+
 		case 11:{
       //char *fname = subString(readString, ':', '0');
       char *tmp = subString(readString, ':', '1');
       char *fname = subString(tmp, ':', '0');
       char *version = subString(tmp, ':', '1');
       rollback(fname, version);
-      //printf("Hello");
-      //char *temp;
-      // result = destroyFunction(fname);
-      // if(result == 0){
-      //   temp = "success";
-      // }else if(result == 1){
-      //   temp = "error><Project not found.";
-      // }else if(result == 2){
-      //   temp = "error><Project could not been deleted.";
-      // }else{
-      //   temp = "error><Unknown error occured with delete.";
-      // }
-      // message = msgPreparer(temp);
+
 			break;
     }
 		case 12:

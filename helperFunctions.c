@@ -257,3 +257,23 @@ char* sockReader(int sockfd){
 
   return readString;
 }
+
+
+char *fileReader(char *fpath){
+    int fd = open(fpath, O_RDONLY);
+    char *fileStr = NULL;
+    if(fd != -1){
+        off_t currentPos = lseek(fd, (size_t)0, SEEK_CUR);
+        int size = lseek(fd, 0, SEEK_END);
+        lseek(fd, currentPos, SEEK_SET);
+
+        fileStr = (char*)malloc(sizeof(char)*size);
+        read(fd, fileStr, size);
+    }
+    else{
+        printf("Configure file could not be opened\n");
+        exit(0);
+    }
+    close(fd);
+    return fileStr;
+}

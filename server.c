@@ -439,7 +439,8 @@ int main(int argc, char **argv) {
     // socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
-    	printf("socket creation failed...\n");
+    	printf("442: socket creation failed...\n");
+    	perror("");
     	exit(0);
     }
     else
@@ -454,6 +455,7 @@ int main(int argc, char **argv) {
     // Binding newly created socket to given IP and verification
     if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
     	printf("socket bind failed...\n");
+    	perror("");
     	exit(0);
     }
     else
@@ -461,7 +463,7 @@ int main(int argc, char **argv) {
 
     // Now server is ready to listen and verification
     if ((listen(sockfd, 5)) != 0) {
-    	printf("Listen failed...\n");
+    	printf("464: Listen failed...\n");
     	exit(0);
     }
     else {
@@ -472,7 +474,8 @@ int main(int argc, char **argv) {
     	// Accept the data packet from client and verification
     	connfd = accept(sockfd, (SA*)&cli, &len);
     	if (connfd < 0) {
-    		printf("server acccept failed...\n");
+    		printf("475: server acccept failed...\n");
+    		perror("");
     		exit(0);
     	}
     	else

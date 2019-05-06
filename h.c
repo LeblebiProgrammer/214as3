@@ -242,6 +242,7 @@ char* sockReader(int sockfd){
 
       if(buff[0] != '<'){
         printf("ERROR: message does not agree to protocol\n");
+        perror("");
         exit(0);
       }
       char endCount = 0;

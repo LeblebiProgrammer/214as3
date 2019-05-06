@@ -61,6 +61,7 @@ char *serverConnect(serverStruct *server, char *msg){
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd == -1) {
 		printf("socket creation failed...\n");
+		perror("");
 		exit(0);
 	}
 	else
@@ -78,6 +79,7 @@ char *serverConnect(serverStruct *server, char *msg){
 	// connect the client socket to server socket
 	if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
 		printf("connection with the server failed...\n");
+		perror("");
 		exit(0);
 	}
 	else
@@ -277,7 +279,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 			continue;
 		else {
 			unsigned char* f = (unsigned char*)strchr(temp, '\t');
-			int _f = (int)(f - 0);
+			int _f = (f - 0);
 			char name[_f];
 			int x = 0;
 			while (x < _f)//stores the file path under name
@@ -321,7 +323,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 			continue;
 		else {
 			unsigned char* f = (unsigned char*)strchr(temp, '\t');
-			int _f = (int)(f - 0);
+			int _f = (f - 0);
 			char name[_f];
 			int x = 0;
 			while (x < _f)//stores the file path under name
@@ -616,4 +618,5 @@ int main(int argc, char **argv) {
         	commit(proj);
         }
 	}
+	return 0;
 }

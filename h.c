@@ -1,5 +1,54 @@
 #include "h.h"
 
+char* _read(char* path) {
+	int fd = open(path, O_RDONLY);
+  	char buffer[1024];
+  	char *str;
+  	int buffer_len = 0;
+  	int str_len = 0;
+  	
+	if (fd > 0) {
+		while ((buffer_len = read(fd, buffer, 1023)) > 0) {
+			str_len += buffer_len;
+			str = realloc(str, (str_len + 1) * sizeof(char));
+			strncat(str, buffer, buffer_len);
+			str[str_len] = '\0';
+    	}
+    	close(fd);
+    	return str;
+  	}
+  	else {
+  		return NULL;
+  	}
+}
+
+char *getLine(char* str, char eol, int n) {//eol is the end of line signifier normally '\n' but can be changed to anything
+//n is the num of eol to skip, do 0 to get the first line
+	char *ptr = str;
+	while (n > 0) {
+		ptr = strchr(ptr, eol);
+		if (ptr + 1 == NULL)
+			return NULL;
+		ptr++;
+		n--;
+	}
+	
+	char *tmp = ptr;
+	int len = 0;
+	while (tmp[len] != '\n') {
+		len++;
+	}
+	
+	char *line = NULL;
+	line = (char*)malloc((len + 1) * sizeof(char));
+	int i = 0;
+	while (i < len) {
+		line[i] = tmp[i];
+		i++;
+	}
+	line[len] = '\0';
+	return line;
+}
 
 char *concat(char *str1, char *str2, char delimeter){
     int length = strlen(str1) + 1 + strlen(str2) + 1;

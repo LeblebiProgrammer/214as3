@@ -61,6 +61,8 @@ char *getLine(char* str, char eol, int n) {//eol is the end of line signifier no
 	char *ptr = str;
 	while (n > 0) {
 		ptr = strchr(ptr, eol);
+		if (ptr + 1 == NULL)
+			return NULL;
 		ptr++;
 		n--;
 	}
@@ -72,7 +74,7 @@ char *getLine(char* str, char eol, int n) {//eol is the end of line signifier no
 	}
 	
 	char *line = NULL;
-	line = (char*)malloc((len + 1) * sizeof(char))
+	line = (char*)malloc((len + 1) * sizeof(char));
 	int i = 0;
 	while (i < len) {
 		line[i] = tmp[i];

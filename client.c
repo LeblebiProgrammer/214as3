@@ -261,8 +261,79 @@ void clientRollback(char *projectName, char *versionNumber){
   	free(tmp);
 }
 
-void buildUpdate(char* name, char* update_path, char* manifest_s) {
-
+void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest_c) {
+	int i = 0;
+	char *temp;
+	
+	int fd = open(update_path, O_RDWR | O_CREAT | O_TRUNC, 00644);
+	if (fd < 0) {
+		printf("file error\n");
+		return;
+	}
+	
+	while (temp = getLine(manifest_c, '\n', i)) {
+		if (strstr(manifest_s, temp))
+			continue;
+		else {
+			unsigned char* f = strchr(temp, '\t');
+			int _f = f - 0;
+			char name[_f];
+			int x = 0;
+			while (x < _f)//stores the file path under name
+				name[x++] = *f++;
+			name[x] = '\0';
+			unsigned char *g = strstr(manifest_s, name);
+			
+			if (g == NULL) {//exists in client manifest but not server
+				char *msg = concat("D", name, ':');
+				char *_msg = concat(msg, "\n", '\0');
+				write(fd, _msg, strlen(_msg));
+				free(msg);
+				free(_msg);
+			}
+			else {
+				while(*g++ == *f++)
+			
+				if (g > f) {//server version ahead of client version
+					char *msg = concat("M", name, ':');
+					char *_msg = concat(msg, "\n", '\0');
+					write(fd, _msg, strlen(_msg));
+					free(msg);
+					free(_msg);
+				}
+				else {//client version ahead of server
+					char *msg = concat("U", name, ':');
+					char *_msg = concat(msg, "\n", '\0');
+					write(fd, _msg, strlen(_msg));
+					free(msg);
+					free(_msg);
+				}
+			}
+		}
+	}
+	while (temp = getLine(manifest_s, '\n', i)) {
+		if (strstr(manifest_c, temp))
+			continue;
+		else {
+			unsigned char* f = strchr(temp, '\t');
+			int _f = f - 0;
+			char name[_f];
+			int x = 0;
+			while (x < _f)//stores the file path under name
+				name[x++] = *f++;
+			name[x] = '\0';
+			unsigned char *g = strstr(manifest_c, name);
+			
+			if (g == NULL) {//for when file in server manifest but not client
+				char *msg = concat("A", name, ':');
+				char *_msg = concat(msg, "\n", '\0');
+				write(fd, _msg, strlen(_msg));
+				free(msg);
+				free(_msg);
+			}
+		}
+	}
+	printf(".update built..\n");
 }
 
 void clientUpdate(char *updateName) {
@@ -273,24 +344,25 @@ void clientUpdate(char *updateName) {
   	char *msg = msgPreparer(tmp);
   	
   	char *updatePath = concat(updateName, ".update", '/');
+  	char *_tmp = concat(updateName, ".manifest", '/');
   	
 	char* manifest_s = serverConnect(server, msg);//manifest server
-	
-  	buildUpdate(updateName, updatePath, manifest_s)
+	char* manifest_c = _read(tmp);
+  	buildUpdate(updateName, updatePath, manifest_s, manifest_c);
 	
 	free(msg);
 	free(tmp);
+	free(_tmp);
 	free(updatePath);
 	free(manifest_s);
-	free(manifest_c);
 }
 
 void clientRemove(char* projName, char* fileName) {//NOTE: DOES NOT REMOVE FILE FROM MEMORY ONLY FROM .manifest
 	char *_path = concat("/", projName, '\0');
 	char *path = concat(_path, ".manifest", '/');
-	free(_path);
-	
 	char *tmp = _read(path);
+	
+	free(_path);
 	if (tmp == NULL) {
 		printf("Error: _read() error\n");
 		free(path);
@@ -338,7 +410,7 @@ void clientRemove(char* projName, char* fileName) {//NOTE: DOES NOT REMOVE FILE 
 void currentVersion(char* proj) {
   	char *serverInfo = fileReader("./.configure");
   	serverStruct *server = ServerStringReader(serverInfo);
-  	char *msg = concat("currentversion", fileName, ':');
+  	char *msg = concat("currentversion", proj, ':');
   	if (strlen(msg)>0) {
     	char *total = msgPreparer(msg);
 
@@ -394,15 +466,15 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[1], "remove") == 0) {
           	char *projName = argv[2];
           	char *fileName = argv[3];
-          	clientRemove(projName, fileName)
+          	clientRemove(projName, fileName);
         }
         else if (strcmp(argv[1], "update") == 0) {//WIP
           	char *updateName = argv[2];
-          	clientUpdate(updateName)
+          	clientUpdate(updateName);
         }
         else if (strcmp(argv[1], "currentversion") == 0) {//WIP
           	char *proj = argv[2];
-          	currentVersion(proj)
+          	currentVersion(proj);
         }
 	}
 }

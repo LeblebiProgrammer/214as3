@@ -1,4 +1,3 @@
-
 #include "helperFunctions.h"
 
 #define SA struct sockaddr
@@ -7,7 +6,7 @@
 
 int functionDeterminer(char *str) {
     char *functionString = NULL;
-		int type = -1;
+	int type = -1;
     char *ptr = strchr(str, ':');
     
     if (ptr) {
@@ -71,7 +70,7 @@ int createFunction(char *str){
     	char *fp = concat(maniFilePath, ".manifest", '/');
     	char *maniContent = "version:0\n";
     	int manifestWrite = fileWriter(fp, maniContent, strlen(maniContent), '1');
-    	if(mkdirResult != -1 && manifestWrite != -1){
+    	if(mkdirResult != -1 && manifestWrite != -1) {
       		printf("Created successfully\n");
       		result = 0;
     	}

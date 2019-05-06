@@ -1,17 +1,8 @@
 // Write CPP code here
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
-#include <sys/socket.h>
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <arpa/inet.h>
+#include "h.h"
 
-#define MAX 80
+
 #define SA struct sockaddr
 
 typedef struct structObj{
@@ -21,41 +12,10 @@ typedef struct structObj{
 
 void func(int sockfd, char *message)
 {
-	char buff[MAX];
-	// bzero(buff, sizeof(buff));
-	// printf("Enter the string : ");
-	// n = 0;
-	// while ((buff[n++] = getchar()) != '\n')
-	// 	;
-    // buff[n-1] = '\0';
 	write(sockfd, message, (strlen(message)+1)*sizeof(char));
-	//bzero(buff, sizeof(buff));
-	// read(sockfd, buff, sizeof(buff));
-	// printf("From Server : %s", buff);
-	// if ((strncmp(buff, "exit", 4)) == 0) {
-	// 	printf("Client Exit...\n");
-	// 	break;
-	// }
 
 }
 
-char *messageConcat(char *str1, char *str2){
-    int length = strlen(str1) + 1 + strlen(str2) + 1;
-    char *val = (char*)malloc(sizeof(char)*length);
-
-    strcpy(val, str1);
-    val[strlen(str1)] = ':';
-
-    int count = strlen(str1)+1;
-    int i = 0;
-    for(i = 0; i< strlen(str2); i++){
-        val[count] = str2[i];
-        count++;
-    }
-    val[count] = '\0';
-		printf("%d len out concat\t", length);
-    return val;
-}
 
 char *fileReader(char *fpath){
     int fd = open(fpath, O_RDONLY);
@@ -76,18 +36,6 @@ char *fileReader(char *fpath){
     return fileStr;
 }
 
-int fileWriter(char *fpath, char *string, int writeLen,char config){
-
-    if(config == '1'){
-        int fd = open(fpath, O_CREAT | O_RDWR , 0666);
-        if (fd != -1) {
-        //printf("%s\n", str);
-            write(fd, string, (strlen(string))*sizeof(char));
-        }
-        close(fd);
-    }
-    return 0;
-}
 
 void configure(char *_ip, char *_port){
     //printf("%s\n", _port);
@@ -108,7 +56,7 @@ void configure(char *_ip, char *_port){
 }
 
 
-void serverConnect(serverStruct *server, char *msg){
+char *serverConnect(serverStruct *server, char *msg){
     int sockfd = -10; //int connfd;
 	struct sockaddr_in servaddr;//, cli;
 
@@ -127,7 +75,7 @@ void serverConnect(serverStruct *server, char *msg){
 	// assign IP, PORT
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = inet_addr(server->ip);
-    int port = atoi(server->port);
+  int port = atoi(server->port);
 	servaddr.sin_port = htons(port);
 
 	// connect the client socket to server socket
@@ -141,8 +89,13 @@ void serverConnect(serverStruct *server, char *msg){
 	// function for chat
 	func(sockfd, msg);
 
+
+  char *readString = sockReader(sockfd);
+	printf("From Server : %s", readString);
+  //free(readString);
 	// close the socket
 	close(sockfd);
+  return readString;
 }
 
 
@@ -155,7 +108,7 @@ serverStruct *ServerStringReader(char *str){
        char *ip = (char*)malloc(sizeof(char)*(index+1));
 
        int portLen = (strlen(str)-index);
-       //printf("portlen %d\t",portLen );
+
        char *port = (char*)malloc(sizeof(char)* portLen);
        for(i = 0; i< index; i++){
            ip[i] = str[i];
@@ -181,12 +134,19 @@ void checkout(char *fileName){
     char *serverInfo = fileReader("./.configure");
     //printf("%s\n", serverInfo);
     serverStruct *server = ServerStringReader(serverInfo);
-    char *msg = messageConcat("checkout", fileName);
-		printf("%ld len out of checkout\n", strlen(msg));
-    //printf("message: %s\n",msg );
-    serverConnect(server, msg);
-    //printf("%s \t %s \n", server->ip, server->port);
-
+    char *msg = concat("checkout", fileName, ':');
+    if(strlen(msg)>0){
+      char *total = msgPreparer(msg);
+      free(msg);
+      if(total != NULL){
+        char *response = serverConnect(server, total);
+        free(total);
+        free(response);
+      }
+      else{
+        printf("Error while preparing message");
+      }
+    }
 
     free(serverInfo);
     free(server->ip);
@@ -199,13 +159,47 @@ void clientCreate(char *fileName){
   char *serverInfo = fileReader("./.configure");
   //printf("%s\n", serverInfo);
   serverStruct *server = ServerStringReader(serverInfo);
-  char *msg = messageConcat("create", fileName);
-  printf("%ld len out of create\n", strlen(msg));
-  //printf("message: %s\n",msg );
-  serverConnect(server, msg);
-  //printf("%s \t %s \n", server->ip, server->port);
+  char *msg = concat("create", fileName, ':');
+
+  if(strlen(msg)>0){
+    char *total = msgPreparer(msg);
+    if(total != NULL){
+
+      char *response = serverConnect(server, total);
+
+      char *charEnd = subString(response, '>', '1');
+      char *front = subString(response, '>', '0');
+      if(strcmp(front, "success") == 0){
+        char *path = subIndexer(charEnd, "<", '>');
+        char *c1 = subString(charEnd, '>', '1');
+        char *content = subString(c1, '<', '1');
+
+        char *strs = folderFinder(path);
+        fileWriter(strs, content, 0, '1');
 
 
+        free(path);
+        free(c1);
+        free(content);
+      }
+      if(charEnd != NULL){
+        free(charEnd);
+      }
+      if(front != NULL){
+        free(front);
+      }
+
+
+      free(total);
+      free(response);
+    }
+    else{
+      printf("Error while preparing message");
+    }
+  }
+
+
+  free(msg);
   free(serverInfo);
   free(server->ip);
   free(server->port);
@@ -216,12 +210,24 @@ void clientDestroy(char *fileName){
   char *serverInfo = fileReader("./.configure");
   //printf("%s\n", serverInfo);
   serverStruct *server = ServerStringReader(serverInfo);
-  char *msg = messageConcat("destroy", fileName);
-  printf("%ld len out of destrtoy\n", strlen(msg));
-  //printf("message: %s\n",msg );
-  serverConnect(server, msg);
-  //printf("%s \t %s \n", server->ip, server->port);
+  char *msg = concat("destroy", fileName, ':');
+  if(strlen(msg)>0){
+    char *total = msgPreparer(msg);
 
+    if(total != NULL){
+      //printf("%s\n", total);
+      char *response = serverConnect(server, total);
+      free(total);
+      free(response);
+    }
+    else{
+      printf("Error while preparing message");
+    }
+  }
+  //printf("%ld len out of destrtoy\n", strlen(msg));
+  //printf("message: %s\n",msg );
+
+  //printf("%s \t %s \n", server->ip, server->port);
 
   free(serverInfo);
   free(server->ip);
@@ -229,29 +235,78 @@ void clientDestroy(char *fileName){
   free(server);
 }
 
+void clientAdd(char *projectName, char *fname){
+  struct stat stats;
+  if (stat( projectName, &stats) == -1){
+    printf("Project name doesn't exist\n");
+    return;
+  }
+  char *path = concat(projectName, fname, '/');
+  char *manipath = concat(projectName, ".manifest", '/');
+  free(path);
+  free(manipath);
+}
+
+void clientRollback(char *projectName, char *versionNumber){
+  char *serverInfo = fileReader("./.configure");
+  //printf("%s\n", serverInfo);
+  serverStruct *server = ServerStringReader(serverInfo);
+  char *tmp = concat("rollback", projectName, ':');
+  char *msg = concat(tmp, versionNumber, ':');
+  if(strlen(msg)>0){
+    char *total = msgPreparer(msg);
+    if(total != NULL){
+      //printf("%s\n", total);
+      char *response = serverConnect(server, total);
+      free(total);
+      free(response);
+    }
+    else{
+      printf("Error while preparing message");
+    }
+    free(msg);
+  }
+  free(tmp);
+}
+
 int main(int argc, char **argv)
 {
     if(argc > 1){
         if(strcmp(argv[1], "configure") == 0){
-            char *ip = argv[2];
-            char *port = argv[3];
-            configure(ip, port);
+          char *ip = argv[2];
+          char *port = argv[3];
+          configure(ip, port);
         }
         else if(strcmp(argv[1], "checkout") == 0){
-            //printf("Hi");
-            char *checkoutName = argv[2];
-            checkout(checkoutName);
+          //printf("Hi");
+          char *checkoutName = argv[2];
+          checkout(checkoutName);
         }
         else if(strcmp(argv[1], "create") == 0){
-            //printf("Hi");
-            char *createName = argv[2];
-            clientCreate(createName);
+          //printf("Hi");
+          char *createName = argv[2];
+          clientCreate(createName);
         }
         else if(strcmp(argv[1], "destroy") == 0){
-            //printf("Hi");
-            char *destroyName = argv[2];
-            clientDestroy(destroyName);
+          //printf("Hi");
+          char *destroyName = argv[2];
+          clientDestroy(destroyName);
         }
+        else if(strcmp(argv[1], "add") == 0){
+          char *projectName = argv[2];
+          if(argv[3] != NULL){
+            char *fname = argv[3];
+            clientAdd(projectName, fname);
+          }
+        }
+        else if (strcmp(argv[1], "rollback") == 0){
+          char *projectName = argv[2];
+          if(argv[3] != NULL){
+            char *versionNumber = argv[3];
+            clientRollback(projectName, versionNumber);
+          }
+        }
+
     }
 
 }

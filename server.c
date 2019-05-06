@@ -1,20 +1,6 @@
-#include <netdb.h>
-
-#include <dirent.h>
-#include <sys/socket.h>
-
-#include <fcntl.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <arpa/inet.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "helperFunctions.h"
 
-#define MAX 10
 #define SA struct sockaddr
 
 // Function designed for chat between client and server.
@@ -65,107 +51,220 @@ void commitFunction(char *str){
 
 }
 
-void createFunction(char *str){
-
+int createFunction(char *str){
+  //returns 0 for success, 1 for file present error, 2 for manifest error
 	struct stat stats;
+  int result = -1;
 	if (stat( str, &stats) == -1) {
-    int result = mkdir(str, 0700);
+    int mkdirResult = mkdir(str, 0700);
     char *maniFilePath = concat("./",str, '\0');
     char *fp = concat(maniFilePath, ".manifest", '/');
     char *maniContent = "version:0\n";
     int manifestWrite = fileWriter(fp, maniContent, strlen(maniContent), '1');
-    if(result != -1 && manifestWrite != -1){
+    if(mkdirResult != -1 && manifestWrite != -1){
       printf("Created successfully\n");
-
+      result = 0;
     }
-
+    else {
+      result = 2;
+    }
 	}
 	else{
+    //file was present error
+    result = 1;
 		printf("File present error\n");
 	}
+  return result;
 }
 
-void destroyFunction(char *str){
-  struct stat stats;
-  if (stat( str, &stats) != -1){
-    int rv = remove(str);
-    printf("Removed");
-  }
+
+int remove_directory(char *path)
+{
+   DIR *_dir = opendir(path);
+   int rvalue = -1;
+   if (_dir)
+   {
+      struct dirent *pdirent;
+      rvalue = 0;
+      while (!rvalue && (pdirent=readdir(_dir)))
+      {
+          int rvalue2 = -1;
+
+          if (!strcmp(pdirent->d_name, ".") || !strcmp(pdirent->d_name, ".."))
+          {
+             continue;
+          }
+           struct stat statbuf;
+           char *fpath = concat(path, pdirent->d_name, '/');
+           if (!stat(fpath, &statbuf)){
+              if (S_ISDIR(statbuf.st_mode)){
+                 rvalue2 = remove_directory(fpath);
+              }
+              else{
+                 rvalue2 = unlink(fpath);
+              }
+           }
+
+           free(fpath);
+          rvalue = rvalue2;
+      }
+      closedir(_dir);
+   }
+   //empty dir
+   if (!rvalue)
+   {
+      rvalue = rmdir(path);
+   }
+
+   return rvalue;
 }
+
+int destroyFunction(char *str){
+  //returns 0 for success, 1 for dir was not found,2 for deletion was not done,
+  //
+  struct stat stats;
+  int result = -1;
+  if (stat( str, &stats) != -1){
+    int rs = remove_directory(str);
+    if(rs != 0){
+      //resulted in failure
+      result = 2;
+      printf("%s could not been deleted.\n", str);
+    }
+    else{
+      //success
+      result = 0;
+      printf("%s deleted.\n", str);
+    }
+  }
+  else{
+    printf("%s not present.\n", str);
+    result = 1;
+  }
+  return result;
+}
+
+int rollback(char *pname, char *version){
+  struct stat stats;
+  int result = -1;
+  if (stat( pname, &stats) != -1){
+    int _version = atoi(version);
+    DIR *_dir = opendir(pname);
+    struct dirent *de;
+    while((de = readdir(_dir)) != NULL) {
+      if(!isdigit(*de->d_name))
+          continue;
+      int x = atoi(de->d_name);
+      if(x>_version){
+        char *dpath = concat(pname,de->d_name, '/');
+        int localresult = remove_directory(dpath);
+        if(localresult != 0){
+          result = 2;
+        }
+      }
+    }
+    if(result == -1)
+      result = 0;
+  }
+  else{
+    result = 1;
+  }
+  return result;
+}
+
 
 void func(int sockfd)
 {
-	char buff[MAX];
-	int n;
-  int size = 0;
-  char *readString = (char *)malloc(sizeof(char)*MAX);
-	// infinite loop for chat
-	bzero(buff, MAX);
-
-	// read the message from client and copy it in buffer
-	int readSize = -1;
-	while( (readSize = read(sockfd, buff, sizeof(buff))) > 0){
-        printf("%s\n", buff);
-        size += readSize;
-        if(size != MAX){
-            readString = realloc(readString, size);
-            strcat(readString, buff);
-        }else{
-						strcat(readString, buff);
-        }
-        bzero(buff, MAX);
-    }
+	char *readString = sockReader(sockfd);
     //printf("\n%s\n", readString);
-		int functionType = functionDeterminer(readString);
-		printf("%d\n", functionType);
-		switch(functionType){
-			case 1:
-				commitFunction(readString);
-				break;
-			case 2:
-				break;
-			case 3:
-				break;
-			case 4:
-				break;
-			case 5:
-				break;
-			case 6:{
-        char *fname = subString(readString, ':');
-				createFunction(fname);
-				break;
-      }
-			case 7:{
-        char * fname = subString(readString, ':');
-        destroyFunction(fname);
-				break;
-      }
-			case 10:
-				break;
-			case 11:
-				break;
-			case 12:
-				break;
-		}
+	int functionType = functionDeterminer(readString);
+  int result = -1;
+  char *message = NULL;
+	printf("%d\n", functionType);
+	switch(functionType){
+		case 1:
+			commitFunction(readString);
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		case 4:
+			break;
+		case 5:
+			break;
+		case 6:{
+      char *fname = subString(readString, ':', '1');
+      char *temp;
+			result = createFunction(fname);
+      if(result == 0){
+        //temp = "<success>";
 
-    free(readString);
-	// print buffer which contains the client contents
-	// printf("From client: %s\t To client : ", buff);
-	// bzero(buff, MAX);
-	// n = 0;
-	// // copy server message in the buffer
-	// while ((buff[n++] = getchar()) != '\n')
-	// 	;
-    //
-	// // and send that buffer to client
-	// write(sockfd, buff, sizeof(buff));
-    //
-	// // if msg contains "Exit" then server exit and chat ended.
-	// if (strncmp("exit", buff, 4) == 0) {
-	// 	printf("Server Exit...\n");
-	// 	break;
-	// }
+        char *_path = concat("<", fname, '\0');
+        char *path_ = concat(_path, ".manifest", '/');
+        char *_path2 = concat(path_, "><version:0\n", '\0');
+        temp = concat("success>", _path2, '\0');
+      }else if(result == 1){
+        temp = "error><file was present.";
+      }else if(result == 2){
+        temp = "error><manifest had an error.";
+      }else{
+        temp = "error><Unknown error occured with create.";
+      }
 
+
+      message = msgPreparer(temp);
+			break;
+    }
+		case 7:{
+      char *fname = subString(readString, ':', '1');
+      char *temp;
+      result = destroyFunction(fname);
+      if(result == 0){
+        temp = "success";
+      }else if(result == 1){
+        temp = "error><Project not found.";
+      }else if(result == 2){
+        temp = "error><Project could not been deleted.";
+      }else{
+        temp = "error><Unknown error occured with delete.";
+      }
+      message = msgPreparer(temp);
+			break;
+    }
+		case 10:
+			break;
+		case 11:{
+      //char *fname = subString(readString, ':', '0');
+      char *tmp = subString(readString, ':', '1');
+      char *fname = subString(tmp, ':', '0');
+      char *version = subString(tmp, ':', '1');
+      rollback(fname, version);
+      //printf("Hello");
+      //char *temp;
+      // result = destroyFunction(fname);
+      // if(result == 0){
+      //   temp = "success";
+      // }else if(result == 1){
+      //   temp = "error><Project not found.";
+      // }else if(result == 2){
+      //   temp = "error><Project could not been deleted.";
+      // }else{
+      //   temp = "error><Unknown error occured with delete.";
+      // }
+      // message = msgPreparer(temp);
+			break;
+    }
+		case 12:
+			break;
+	}
+
+
+  if(message != NULL){
+    write(sockfd, message, sizeof(message)*strlen(message));
+    free(message);
+  }
+  free(readString);
 }
 
 
@@ -178,72 +277,73 @@ void compress(){
 int main(int argc, char **argv)
 {
 
-    destroyFunction("ProjectZero");
-    // if(argc<2){
-    //     printf("Please enter port number\n");
-    //     return 0;
-    // }
-    //
-    // char *_port = argv[1];
-    // int portNo = 0;
-    // if(strlen(_port)>=4){
-    //     portNo = atoi(_port);
-    // }
-    // else{
-    //     printf("Please enter a port number greater than 8k\n");
-    //     return 0;
-    // }
-    // int sockfd, connfd;
-    // socklen_t len;
-    // struct sockaddr_in servaddr, cli;
-    //
-    // // socket create and verification
-    // sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    // if (sockfd == -1) {
-    // 	printf("socket creation failed...\n");
-    // 	exit(0);
-    // }
-    // else
-    // 	printf("Socket successfully created..\n");
-    // bzero(&servaddr, sizeof(servaddr));
-    //
-    // // assign IP, PORT
-    // servaddr.sin_family = AF_INET;
-    // servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    // servaddr.sin_port = htons(portNo);
-    //
-    // // Binding newly created socket to given IP and verification
-    // if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
-    // 	printf("socket bind failed...\n");
-    // 	exit(0);
-    // }
-    // else
-    // 	printf("Socket successfully binded..\n");
-    //
-    // // Now server is ready to listen and verification
-    // if ((listen(sockfd, 5)) != 0) {
-    // 	printf("Listen failed...\n");
-    // 	exit(0);
-    // }
-    // else{
-    // 	printf("Server listening..\n");
-    //        len = sizeof(cli);
-    //
-    //
-    // 	// Accept the data packet from client and verification
-    // 	connfd = accept(sockfd, (SA*)&cli, &len);
-    // 	if (connfd < 0) {
-    // 		printf("server acccept failed...\n");
-    // 		exit(0);
-    // 	}
-    // 	else
-    // 		printf("server acccept the client...\n");
-    //
-    // 	// Function for chatting between client and server
-    // 	func(connfd);
-    //
-    // 	// After chatting close the socket
-    //
-    // }
-    // close(sockfd);
+
+    if(argc<2){
+        printf("Please enter port number\n");
+        return 0;
+    }
+
+    char *_port = argv[1];
+    int portNo = 0;
+    if(strlen(_port)>=4){
+        portNo = atoi(_port);
+    }
+    else{
+        printf("Please enter a port number greater than 8k\n");
+        return 0;
+    }
+    int sockfd, connfd;
+    socklen_t len;
+    struct sockaddr_in servaddr, cli;
+
+    // socket create and verification
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+    	printf("socket creation failed...\n");
+    	exit(0);
+    }
+    else
+    	printf("Socket successfully created..\n");
+    bzero(&servaddr, sizeof(servaddr));
+
+    // assign IP, PORT
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(portNo);
+
+    // Binding newly created socket to given IP and verification
+    if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
+    	printf("socket bind failed...\n");
+    	exit(0);
+    }
+    else
+    	printf("Socket successfully binded..\n");
+
+    // Now server is ready to listen and verification
+    if ((listen(sockfd, 5)) != 0) {
+    	printf("Listen failed...\n");
+    	exit(0);
+    }
+    else{
+    	printf("Server listening..\n");
+           len = sizeof(cli);
+
+
+    	// Accept the data packet from client and verification
+    	connfd = accept(sockfd, (SA*)&cli, &len);
+    	if (connfd < 0) {
+    		printf("server acccept failed...\n");
+    		exit(0);
+    	}
+    	else
+    		printf("server acccept the client...\n");
+
+    	// Function for chatting between client and server
+    	func(connfd);
+
+    	// After chatting close the socket
+
+    }
+    close(sockfd);
+    return 0;
 }

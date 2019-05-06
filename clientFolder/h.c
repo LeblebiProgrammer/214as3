@@ -1,4 +1,4 @@
-#include "helperFunctions.h"
+#include "h.h"
 
 
 char *concat(char *str1, char *str2, char delimeter){
@@ -25,28 +25,6 @@ char *concat(char *str1, char *str2, char delimeter){
 		//printf("%d len out concat\t", length);
     return val;
 }
-//
-// char *subString(char *str, char delimeter){
-//   char *ptr = strchr(str, delimeter);
-//   char *sub = NULL;
-//   if(ptr) {
-//      int index = ptr - str;
-//      int i = index + 1;
-//
-//      int subLen = (strlen(str)-index);
-//
-//      sub = (char*)malloc(sizeof(char)* subLen);
-//      int count = 0;
-//      for(; i< strlen(str); i++){
-//          sub[count] = str[i];
-//          count++;
-//      }
-//
-//      sub[count] = '\0';
-//
-//   }
-//   return sub;
-// }
 
 char *subString(char *str, char delimeter, char begin){
   char *ptr = strchr(str, delimeter);
@@ -84,7 +62,6 @@ char *subString(char *str, char delimeter, char begin){
   }
   return sub;
 }
-
 
 char* subIndexer(char *fileStr, char *word, char endChar){
   char* begin = strstr(fileStr, word);
@@ -169,6 +146,11 @@ char *msgPreparer(char *msg){
   int size = digitCounter(len);
   if(size > 0){
 
+    // char *meta2 = concat("<", meta1, '\0');
+    // char *meta3 = concat(meta2, "><",'\0');
+    // char *sendMsg = concat(meta3, msg, '\0');
+    // char *send = concat(sendMsg, ">", '\0');
+    //char *meta3 = concat(meta2, "<",'\0');
     char *sendMsg = concat("<", msg, '\0');
     char *send = concat(sendMsg, ">", '\0');
     len = strlen(send) + 1 ;//
@@ -192,8 +174,9 @@ char *msgPreparer(char *msg){
 
 char* sockReader(int sockfd){
   char buff[MAX];
-
-  char *readString = NULL;
+	//int n;
+  //int size = 0;
+  char *readString = NULL;//= (char *)malloc(sizeof(char)*MAX);
 	bzero(buff, MAX);
 
 	// read the message from client and copy it in buffer
@@ -256,4 +239,57 @@ char* sockReader(int sockfd){
   readString[charCount] = '\0';
 
   return readString;
+}
+
+void createDir(char *str){
+  struct stat stats;
+
+	if (stat( str, &stats) == -1) {
+    mkdir(str, 0700);
+    //printf("CREATED");
+  }
+}
+
+
+char * folderFinder(char *path){
+  char* pPosition;
+  char *_temp;
+  char *parent;
+  char *ptemp;
+  char *val;
+  char p = '0';
+  while(strchr(path, '/') != NULL && pPosition != NULL){
+    //printf("HI");
+
+    if(p == '0'){
+      parent = subString(path, '/', '0');
+      createDir(parent);
+      _temp  = subString(path, '/', '1');
+      p = '1';
+      pPosition = _temp;
+    }
+    else{
+      //char *folder = subIndexer(pPosition, "/", '/');
+      if(strchr(pPosition, '/')){
+        char *pparent = subString(pPosition, '/', '0');
+        ptemp = concat(parent, pparent, '/');
+        free(parent);
+        parent = ptemp;
+        createDir(parent);
+        //char *folder = subString(pPosition, '/', '0');
+        _temp  = subString(pPosition, '/', '1');
+        free(pPosition);
+        pPosition = _temp;
+      }
+      else{
+        break;
+      }
+    }
+  }
+  if(pPosition != NULL && parent != NULL){
+    val = concat(parent, pPosition, '/');
+  }
+  free(parent);
+  free(pPosition);
+  return val;
 }

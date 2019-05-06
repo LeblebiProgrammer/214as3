@@ -194,7 +194,7 @@ void func(int sockfd) {
 	
 	switch(functionType) {
 		case 1:
-			commitFunction(readString);
+			//commitFunction(readString);
 			break;
 		case 2: {
 			char *temp;
@@ -236,15 +236,20 @@ void func(int sockfd) {
 					update += 2;
 					while (*update != '\n') buffer[i++] = *update++;
 					buffer[i] = '\0';
-					char *temp = concat(buffer, _read(buffer), ':');
+					char *_temp = _read(buffer);
+					char *temp = concat(buffer, _temp, ':');
+					free(_temp);
 					message = realloc(message, strlen(message) + strlen(temp) + 1);
 					message = concat(message, temp, '\n');
 				}
 				else if (*update == 'A') {
 					update += 2;
-					while (*update != '\n') buffer[i++] = *update++;
+					while (*update != '\n')
+						buffer[i++] = *update++;
 					buffer[i] = '\0';
-					char *temp = concat(buffer, _read(buffer), ':');
+					char *_temp = _read(buffer);
+					char *temp = concat(buffer, _temp, ':');
+					free(_temp);
 					message = realloc(message, strlen(message) + strlen(temp) + 1);
 					message = concat(message, temp, '\n');
 				}
@@ -252,7 +257,6 @@ void func(int sockfd) {
 		}
 			break;
 		case 4: {//returns server .Manifest
-			char *temp;
 			char *proj = subString(readString, ':', '1');
 			proj[strlen(proj)] = '\0';//might cause seg faults
 			
@@ -324,7 +328,6 @@ void func(int sockfd) {
     	}
     		break;
 		case 10: {
-			char *temp;
 			char *proj = subString(readString, ':', '1');
 			proj[strlen(proj)] = '\0';//might cause seg faults
 			
@@ -373,8 +376,8 @@ void func(int sockfd) {
     	}
     		break;
 		case 12: {
-			char *temp;
-			char *proj = subString(readString, ':', '1');
+			char *proj = NULL;
+			proj = subString(readString, ':', '1');
 			proj[strlen(proj)] = '\0';
 			
 			char *path_history = concat(proj, ".history", '\0');
@@ -399,20 +402,19 @@ void func(int sockfd) {
   			memcpy(message, _history, _history_len);
   			free(_history);
 		}
-			break;
 	}
 
   	if (message != NULL) {
     	write(sockfd, message, sizeof(message)*strlen(message));
     	free(message);
   	}
-  	free(readString);
+  	//free(readString);
 }
 
 
-void compress(){
+/*void compress(){
 
-}
+}*/
 
 // Driver function
 int main(int argc, char **argv) {

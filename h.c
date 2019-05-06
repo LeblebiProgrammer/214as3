@@ -22,7 +22,7 @@ char* _read(char* path) {
   	}
 }
 
-char *getLine(char* str, char eol, int n) {//eol is the end of line signifier normally '\n' but can be changed to anything
+char* getLine(char* str, char eol, int n) {//eol is the end of line signifier normally '\n' but can be changed to anything
 //n is the num of eol to skip, do 0 to get the first line
 	char *ptr = str;
 	while (n > 0) {

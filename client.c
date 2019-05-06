@@ -263,7 +263,7 @@ void clientRollback(char *projectName, char *versionNumber){
 
 void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest_c) {
 	int i = 0;
-	char *temp;
+	char* temp = NULL;
 	
 	int fd = open(update_path, O_RDWR | O_CREAT | O_TRUNC, 00644);
 	if (fd < 0) {
@@ -271,11 +271,12 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 		return;
 	}
 	
-	while (temp = getLine(manifest_c, '\n', i)) {
+	temp = (char*)getLine(manifest_c, '\n', i);
+	while (temp != NULL) {
 		if (strstr(manifest_s, temp))
 			continue;
 		else {
-			unsigned char* f = strchr(temp, '\t');
+			unsigned char* f = (unsigned char*)strchr(temp, '\t');
 			int _f = (int)(f - 0);
 			char name[_f];
 			int x = 0;
@@ -310,12 +311,16 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 				}
 			}
 		}
+		temp = (char*)getLine(manifest_c, '\n', i);
 	}
-	while (temp = getLine(manifest_s, '\n', i)) {
+	
+	temp[0] = '\0';
+	temp = (char*)getLine(manifest_s, '\n', i);
+	while (temp != NULL) {
 		if (strstr(manifest_c, temp))
 			continue;
 		else {
-			unsigned char* f = strchr(temp, '\t');
+			unsigned char* f = (unsigned char*)strchr(temp, '\t');
 			int _f = (int)(f - 0);
 			char name[_f];
 			int x = 0;
@@ -332,6 +337,7 @@ void buildUpdate(char* name, char* update_path, char* manifest_s, char* manifest
 				free(_msg);
 			}
 		}
+		temp = getLine(manifest_s, '\n', i);
 	}
 	printf(".update built..\n");
 }
@@ -347,7 +353,8 @@ void clientUpdate(char *updateName) {//TODO add stdout functionality
   	char *_tmp = concat(updateName, ".manifest", '/');
   	
 	char* manifest_s = serverConnect(server, msg);//manifest server
-	char* manifest_c = _read(tmp);
+	char* manifest_c = NULL;
+	manifest_c = (char*)_read(tmp);
   	buildUpdate(updateName, updatePath, manifest_s, manifest_c);
 	
 	free(msg);
@@ -360,7 +367,8 @@ void clientUpdate(char *updateName) {//TODO add stdout functionality
 void clientRemove(char* projName, char* fileName) {//NOTE: DOES NOT REMOVE FILE FROM MEMORY ONLY FROM .manifest
 	char *_path = concat("/", projName, '\0');
 	char *path = concat(_path, ".manifest", '/');
-	char *tmp = _read(path);
+	char *tmp = NULL;
+	tmp = (char*)_read(path);
 	
 	free(_path);
 	if (tmp == NULL) {
@@ -427,16 +435,16 @@ void currentVersion(char* proj) {
   	}
 }
 
-void updateManifest(char* proj) {
+/*void updateManifest(char* proj) {
 	/* 1. GET CLIENT MANIFEST for PROJ */
-	char* path_p = concat(proj, ".manifest", '/');
+	/*char* path_p = concat(proj, ".manifest", '/');
 	char* manifest_o = _read(path_p);
 	char* manifest_n;
-}
+}*/
 
 void _upgrade(char* proj, char* upgrade, char* response) {
 	char* ptr = upgrade;
-	char* path = concat(proj, ".manifest", '/');
+	//char* path = concat(proj, ".manifest", '/');
 	
 	char* ptrr = response;
 	while (*ptr) {
@@ -476,17 +484,18 @@ void _upgrade(char* proj, char* upgrade, char* response) {
 				break;
 			case 'D': {
 					while (*ptr != ':') ptr++;
-					ptr++
+					ptr++;
 					char file_buffer[256];
 					int z = 0;
-					while (*ptr != '\n') file_buffer[z++] = *ptr++;
+					while (*ptr != '\n') 
+						file_buffer[z++] = *ptr++;
 					clientRemove(proj, file_buffer);
 				}
 				break;
 			default: continue;
 		}
 	}
-	updateManifest(proj);
+	//updateManifest(proj);
 }
 
 void upgrade(char* proj) {
@@ -494,7 +503,8 @@ void upgrade(char* proj) {
   	serverStruct *server = ServerStringReader(serverInfo);
   	char *_msg = concat("upgrade", proj, ':');
   	char *path = concat(proj, ".upgrade", '/');
-  	char* temp = _read(path);
+  	char* temp = NULL;
+  	temp = (char*)_read(path);
   	char* msg = concat(_msg, temp, ':');
   	free(path);
   	free(_msg);
@@ -531,7 +541,6 @@ void history(char* proj) {
       		printf(response);
       		
       		free(total);
-      		free(temp);
       		free(response);
     	}
     	else {

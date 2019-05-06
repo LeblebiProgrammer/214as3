@@ -428,7 +428,10 @@ void currentVersion(char* proj) {
 }
 
 void updateManifest(char* proj) {
-//ADD FUNCTIONALITY
+	/* 1. GET CLIENT MANIFEST for PROJ */
+	char* path_p = concat(proj, ".manifest", '/');
+	char* manifest_o = _read(path_p);
+	char* manifest_n;
 }
 
 void _upgrade(char* proj, char* upgrade, char* response) {

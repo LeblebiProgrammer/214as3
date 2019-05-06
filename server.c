@@ -206,7 +206,7 @@ void func(int sockfd) {
   			int fd = open(path_manifest, O_RDONLY);
   			
   			char buffer[1024];
-  			char *_manifest;
+  			char *_manifest = NULL;
   			int buffer_len = 0;
   			int _manifest_len = 0;
 			if (fd > 0) {
@@ -256,7 +256,7 @@ void func(int sockfd) {
 			char *proj = subString(readString, ':', '1');
 			proj[strlen(proj)] = '\0';//might cause seg faults
 			
-			char *path_manifest = concat(proj, ".manifest", '\0');
+			char *path_manifest = concat(proj, ".manifest", '/');
   			
   			int fd = open(path_manifest, O_RDONLY);
   			
@@ -328,9 +328,9 @@ void func(int sockfd) {
 			char *proj = subString(readString, ':', '1');
 			proj[strlen(proj)] = '\0';//might cause seg faults
 			
-			char *path_manifest = concat(proj, ".manifest", '\0');
+			char *path_history = concat(proj, ".history", '/');
   			
-  			int fd = open(path_manifest, O_RDONLY);
+  			int fd = open(path_history, O_RDONLY);
   			
   			char buffer[1024];
   			char *_manifest;
@@ -372,7 +372,33 @@ void func(int sockfd) {
       // message = msgPreparer(temp);
     	}
     		break;
-		case 12://history
+		case 12: {
+			char *temp;
+			char *proj = subString(readString, ':', '1');
+			proj[strlen(proj)] = '\0';
+			
+			char *path_history = concat(proj, ".history", '\0');
+  			
+  			int fd = open(path_history, O_RDONLY);
+  			
+  			char buffer[1024];
+  			char *_history = NULL;
+  			int buffer_len = 0;
+  			int _history_len = 0;
+			if (fd > 0) {
+				while ((buffer_len = read(fd, buffer, 1023)) > 0) {
+					_history_len += buffer_len;
+					_history = realloc(_history, (_history_len + 1) * sizeof(char));
+					strncat(_history, buffer, buffer_len);
+					_history[_history_len] = '\0';
+    			}
+
+    			close(fd);
+  			}
+  			message = (char*)malloc(_history_len + 1);
+  			memcpy(message, _history, _history_len);
+  			free(_history);
+		}
 			break;
 	}
 

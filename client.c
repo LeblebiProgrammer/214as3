@@ -262,37 +262,7 @@ void clientRollback(char *projectName, char *versionNumber){
 }
 
 void buildUpdate(char* name, char* update_path, char* manifest_s) {
-    DIR *dir;
-    struct dirent *entry;
-    struct stat buff;
 
-    if (!(dir = opendir(name)))
-        return;
-
-    while ((entry = readdir(dir)) != NULL) {
-      	if (entry->d_type == DT_DIR) {
-        	if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".git") == 0)
-          		continue;
-        	char path[1024];
-        	strcat(path, name);
-        	strcat(path, "/");
-        	strcat(path, entry->d_name);
-        
-        	buildUpdate(path, manifest_s);
-      	}
-    	else {
-        	char path[1024];
-        	strcat(path, name);
-        	strcat(path, "/");
-        	strcat(path, entry->d_name);
-        	
-			char *ptr = strstr(manifest_s, path);
-			if (ptr == NULL) {
-				update_u()
-			}
-				
-      	}
-	}
 }
 
 void clientUpdate(char *updateName) {
@@ -365,6 +335,26 @@ void clientRemove(char* projName, char* fileName) {//NOTE: DOES NOT REMOVE FILE 
 	}
 }
 
+void currentVersion(char* proj) {
+  	char *serverInfo = fileReader("./.configure");
+  	serverStruct *server = ServerStringReader(serverInfo);
+  	char *msg = concat("currentversion", fileName, ':');
+  	if (strlen(msg)>0) {
+    	char *total = msgPreparer(msg);
+
+    	if (total != NULL) {
+      		char *response = serverConnect(server, total);
+      		free(total);
+      		printf(response);
+      		free(response);
+    	}
+    	else {
+      		printf("Error while preparing message");
+    	}
+    	free(msg);
+  	}
+}
+
 int main(int argc, char **argv) {
     if (argc > 1){
         if (strcmp(argv[1], "configure") == 0) {
@@ -410,9 +400,9 @@ int main(int argc, char **argv) {
           	char *updateName = argv[2];
           	clientUpdate(updateName)
         }
-        else if (strcmp(argv[1], "upgrade") == 0) {//WIP
-          	char *upgradeName = argv[2];
-          	clientUpgrade(upgradeName)
+        else if (strcmp(argv[1], "currentversion") == 0) {//WIP
+          	char *proj = argv[2];
+          	currentVersion(proj)
         }
 	}
 }

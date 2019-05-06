@@ -43,7 +43,7 @@ int functionDeterminer(char *str) {
 	else if(strcmp(functionString, "destroy") == 0) {
 		type = 7;
 	}
-	else if(strcmp(functionString, "currentVersion") == 0) {
+	else if(strcmp(functionString, "currentversion") == 0) {
 		type = 10;
 	}
 	else if(strcmp(functionString, "rollback") == 0) {
@@ -279,7 +279,33 @@ void func(int sockfd) {
       		message = msgPreparer(temp);
     	}
     		break;
-		case 10:
+		case 10: {
+			char *temp;
+			char *proj = subString(readString, ':', '1');
+			proj[strlen(proj)] = '\0';//might cause seg faults
+			
+			char *path_manifest = concat(proj, ".manifest", '\0');
+  			
+  			int fd = open(path_manifest, O_RDONLY);
+  			
+  			char buffer[1024];
+  			char *_manifest;
+  			int buffer_len = 0;
+  			int _manifest_len = 0;
+			if (fd > 0) {
+				while ((buffer_len = read(fd, buffer, 1023)) > 0) {
+					_manifest_len += buffer_len;
+					_manifest = realloc(_manifest, (_manifest_len + 1) * sizeof(char));
+					strncat(_manifest, buffer, buffer_len);
+					_manifest[_manifest_len] = '\0';
+    			}
+
+    			close(fd);
+  			}
+  			message = (char*)malloc(_manifest_len + 1);
+  			memcpy(message, _manifest, _manifest_len);
+  			free(_manifest);
+		}
 			break;
 		case 11: {
       //char *fname = subString(readString, ':', '0');

@@ -6,7 +6,7 @@ char* _read(char* path) {
   	char *str;
   	int buffer_len = 0;
   	int str_len = 0;
-  	
+
 	if (fd > 0) {
 		while ((buffer_len = read(fd, buffer, 1023)) > 0) {
 			str_len += buffer_len;
@@ -24,31 +24,32 @@ char* _read(char* path) {
 
 char *getLine(char* str, char eol, int n) {//eol is the end of line signifier normally '\n' but can be changed to anything
 //n is the num of eol to skip, do 0 to get the first line
-	char *ptr = str;
-	while (n > 0) {
-		ptr = strchr(ptr, eol);
-		if (ptr + 1 == NULL)
-			return NULL;
-		ptr++;
-		n--;
-	}
-	
-	char *tmp = ptr;
-	int len = 0;
-	while (tmp[len] != '\n') {
-		len++;
-	}
-	
-	char *line = NULL;
-	line = (char*)malloc((len + 1) * sizeof(char));
-	int i = 0;
-	while (i < len) {
-		line[i] = tmp[i];
-		i++;
-	}
-	line[len] = '\0';
-	return line;
+  char *ptr = str;
+  while (n > 0) {
+    ptr = strchr(ptr, eol);
+    if (ptr + 1 == NULL)
+      return NULL;
+    ptr++;
+    n--;
+  }
+
+  char *tmp = ptr;
+  int len = 0;
+  while (tmp[len] != '\n') {
+    len++;
+  }
+
+  char *line = NULL;
+  line = (char*)malloc((len + 1) * sizeof(char));
+  int i = 0;
+  while (i < len) {
+    line[i] = tmp[i];
+    i++;
+  }
+  line[len] = '\0';
+  return line;
 }
+
 
 char *concat(char *str1, char *str2, char delimeter){
     int length = strlen(str1) + 1 + strlen(str2) + 1;
@@ -341,4 +342,24 @@ char * folderFinder(char *path){
   free(parent);
   free(pPosition);
   return val;
+}
+
+
+char *fileReader(char *fpath){
+    int fd = open(fpath, O_RDONLY);
+    char *fileStr = NULL;
+    if(fd != -1){
+        off_t currentPos = lseek(fd, (size_t)0, SEEK_CUR);
+        int size = lseek(fd, 0, SEEK_END);
+        lseek(fd, currentPos, SEEK_SET);
+
+        fileStr = (char*)malloc(sizeof(char)*size);
+        read(fd, fileStr, size);
+    }
+    else{
+        printf("Configure file could not be opened\n");
+        exit(0);
+    }
+    close(fd);
+    return fileStr;
 }

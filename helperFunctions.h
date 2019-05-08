@@ -40,6 +40,6 @@ char *msgPreparer(char *msg);
 
 char *sockReader(int sockf);
 
-
+char *fileReader(char *path);
 
 #endif

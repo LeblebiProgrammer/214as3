@@ -17,6 +17,8 @@
 
 #define MAX 20
 
+char *_read(char *path);
+
 char *concat(char *str1, char *str2, char delimeter);
 
 char *subString(char *str, char delimeter, char begin);
@@ -36,5 +38,7 @@ char *sockReader(int sockf);
 void createDir(char *str);
 
 char *folderFinder(char *path);
+
+char *fileReader(char *path);
 
 #endif
